@@ -1,0 +1,281 @@
+"""Implementation of SEIRD Epidemiological Model on COVID-19 data."""
+import pandas as pd
+import numpy as np
+
+from exceptions import NoFitError, NoSimulationError
+
+def countryData(code):
+    import COVID19Py
+    covid_data = COVID19Py.COVID19(data_source="jhu")
+    country_data = covid_data.getLocationByCountryCode(
+        code.upper(), timelines=True
+    )
+    index = list(
+        country_data[0]["timelines"]["confirmed"]["timeline"].keys()
+    )
+    confirmed = country_data[0]["timelines"]["confirmed"][
+        "timeline"
+    ].values()
+    deaths = country_data[0]["timelines"]["deaths"]["timeline"].values()
+    return country_data[0]["country"], country_data[0]["country_population"], pd.DataFrame(
+            data={"confirmed": list(confirmed), "deaths": list(deaths)},
+            index=index,
+        )
+
+def _seird(x, r0, gamma, delta, alpha, rho, population, fit):
+    from scipy.integrate import odeint
+    def deriv(y, x, r0, gamma, delta, alpha, rho):
+        beta = r0 * gamma
+        S, E, I, R, D = y
+        dSdt = -beta * S * I
+        dEdt = beta * S * I - delta * E
+        dIdt = delta * E - (1 - alpha) * gamma * I - alpha * rho * I
+        dRdt = (1 - alpha) * gamma * I
+        dDdt = alpha * rho * I
+        return dSdt, dEdt, dIdt, dRdt, dDdt
+    
+    I0 = 1 / population
+    S0 = 1 - I0
+    y0 = [S0, I0, I0, 0.0, 0.0]
+    ysol = odeint(deriv, y0, x, args=(r0, gamma, delta, alpha, rho))
+
+    S, E, I, R, D = ysol.T
+    if fit:
+        return I
+    else:
+        return [S, E, I, R, D]
+
+
+class CovidSeird:
+    def __init__(self, name, population, data):
+        self.__fit_return = None
+        self.__simulation_return = None
+        
+        self.name, self.population, self.data = name, population, data
+        self.data = self.data[self.data["confirmed"] > 0]
+
+    def __repr__(self):
+        return f"<CountryCovidSeird ({self.name})>"
+
+    @property
+    def best_fit(self) -> np.ndarray:
+        """Get best fit."""
+        if self.__fit_return is None:
+            raise NoFitError()
+        return np.array(
+            [i * self.population for i in self.__fit_return["best_fit"]]
+        )
+
+    @property
+    def r0(self) -> np.float64:
+        """Get r0."""
+        if self.__fit_return is None:
+            raise NoFitError()
+        return self.__fit_return["r0"]
+
+    @property
+    def r2(self) -> np.float64:
+        """Get r2."""
+        if self.__fit_return is None:
+            raise NoFitError()
+        return self.__fit_return["r2"]
+
+    @property
+    def curves(self) -> pd.DataFrame:
+        """Get SEIRD simulation curves."""
+        if self.__simulation_return is None:
+            raise NoSimulationError()
+        return pd.DataFrame(
+            data={
+                "susceptible": self.__simulation_return["S"],
+                "exposed": self.__simulation_return["E"],
+                "infected": self.__simulation_return["I"],
+                "recovered": self.__simulation_return["R"],
+                "dead": self.__simulation_return["D"],
+            }
+        )
+
+    def fit(self):
+        from scipy.stats import linregress
+        from lmfit import Model, Parameters
+        """Fit the real data into the SEIRD model."""
+        if self.__fit_return is None:
+            scaled_cases = np.array(
+                [i / self.population for i in self.data["confirmed"]]
+            )
+            x = np.linspace(0.0, len(scaled_cases), len(scaled_cases))
+
+            params = Parameters()
+            params.add("r0", value=2.0, min=0.0)
+            params.add("gamma", value=0.1, min=0.0, max=1.0)
+            params.add("delta", value=0.1, min=0.0, max=1.0)
+            params.add("alpha", value=0.1, min=0.0, max=1.0)
+            params.add("rho", value=0.1, min=0.0, max=1.0)
+            params.add("population", value=self.population, vary=False)
+            params.add("fit", value=True, vary=False)
+
+            mod = Model(_seird)
+            model_return = mod.fit(scaled_cases, params, x=x)
+            _, _, r_value, _, _ = linregress(
+                model_return.best_fit, scaled_cases
+            )
+            self.__fit_return = {
+                "best_fit": model_return.best_fit,
+                "r0": model_return.best_values["r0"],
+                "r2": r_value ** 2,
+                "gamma": model_return.best_values["gamma"],
+                "delta": model_return.best_values["delta"],
+                "alpha": model_return.best_values["alpha"],
+                "rho": model_return.best_values["rho"],
+            }
+
+    def plot_fit(self, filename: str = ""):
+        import matplotlib.pyplot as plt
+        """Plot fit curve.
+
+        Parameters
+        ----------
+            - filename: output PNG file name.
+
+        """
+        if self.__fit_return:
+            x = pd.to_datetime(self.data.index)
+
+            plt.figure(figsize=(10, 4))
+            plt.plot_date(x, self.data["confirmed"], "-")
+            plt.plot(x, self.best_fit)
+            plt.legend(
+                [
+                    "real",
+                    "fit (R2: {:.2f} | R0: {:.2f})".format(self.r2, self.r0),
+                ]
+            )
+            plt.title(f"{self.name} - SEIRD model fit")
+            plt.xlabel("time (since first confirmed infection)")
+            plt.ylabel("population")
+            if filename:
+                plt.savefig(f"{filename}.png")
+            plt.close()
+        else:
+            raise NoFitError
+
+    def simulation(self, days_ahead: int = 100):
+        """Compute the seird model simulation curves.
+
+        Parameters
+        ----------
+            - days_ahead: day ahead of real data to be simulated.
+
+        """
+        if self.__fit_return is not None:
+            scaled_cases = np.array(
+                [i / self.population for i in self.data["confirmed"]]
+            )
+            x = np.linspace(
+                0.0,
+                len(scaled_cases) + days_ahead,
+                len(scaled_cases) + days_ahead,
+            )
+            S, E, I, R, D = _seird(
+                x,
+                self.r0,
+                self.__fit_return["gamma"],
+                self.__fit_return["delta"],
+                self.__fit_return["alpha"],
+                self.__fit_return["rho"],
+                population=self.population,
+                fit=False,
+            )
+
+            self.__simulation_return = {"S": S, "E": E, "I": I, "R": R, "D": D}
+
+    def plot_simulation(self, filename: str = ""):
+        import matplotlib.pyplot as plt
+        """Plot SEIRD simulation curves.
+
+        Parameters
+        ----------
+            - filename: output PNG file name.
+
+        """
+        if self.__simulation_return:
+
+            real_data = pd.to_datetime(self.data.index)
+            x = pd.date_range(
+                start=real_data[0], periods=len(self.curves["susceptible"]),
+            )
+
+            _, ax = plt.subplots(1, 1, figsize=(10, 4))
+            ax.plot_date(
+                x,
+                list(
+                    map(
+                        lambda x: x * self.population,
+                        self.curves["susceptible"],
+                    )
+                ),
+                "b",
+                alpha=0.7,
+                linewidth=2,
+                label="susceptible",
+            )
+            ax.plot_date(
+                x,
+                list(
+                    map(lambda x: x * self.population, self.curves["exposed"],)
+                ),
+                "y",
+                alpha=0.7,
+                linewidth=2,
+                label="exposed",
+            )
+            ax.plot_date(
+                x,
+                list(
+                    map(
+                        lambda x: x * self.population, self.curves["infected"],
+                    )
+                ),
+                "r",
+                alpha=0.7,
+                linewidth=2,
+                label="infected",
+            )
+            ax.plot_date(
+                x,
+                list(
+                    map(
+                        lambda x: x * self.population, self.curves["recovered"],
+                    )
+                ),
+                "g",
+                alpha=0.7,
+                linewidth=2,
+                label="recovered",
+            )
+            ax.plot_date(
+                x,
+                list(map(lambda x: x * self.population, self.curves["dead"],)),
+                "k",
+                alpha=0.7,
+                linewidth=2,
+                label="dead",
+            )
+
+            ax.set_ylabel("population")
+            ax.set_xlabel("time (since first confirmed infection)")
+
+            ax.yaxis.set_tick_params(length=0)
+            ax.xaxis.set_tick_params(length=0)
+            ax.grid(b=True, which="major", c="w", lw=2, ls="-")
+            legend = ax.legend()
+            legend.get_frame().set_alpha(0.5)
+            for spine in ("top", "right", "bottom", "left"):
+                ax.spines[spine].set_visible(False)
+
+            plt.title(f"{self.name} - SEIRD Simulation")
+            if filename:
+                plt.savefig(f"{filename}.png")
+            plt.close()
+        else:
+            raise NoSimulationError
