@@ -130,5 +130,4 @@ if __name__ == "__main__":
         )
         for country in countries:
             f.write(f"## {country}\n\n")
-            f.write(f"![img](figures/covid-{adjust_name(country)}.svg)\n\n")
             f.write(f"![img](figures/covid-{adjust_name(country)}-daily.svg)\n\n")
