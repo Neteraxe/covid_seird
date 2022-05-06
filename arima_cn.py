@@ -58,13 +58,7 @@ def adjust_date(s):
 def adjust_name(s):
     return re.sub(r"[*,() ']", "_", s)
 
-
-def draw(model, df, province):
-    draw_(model, df, province, True)
-    draw_(province, False)
-
-
-def draw_(model, df, province, isDaily):
+def draw(model, df, province, isDaily):
     # 模型训练
     if isDaily:
         data = df[province].diff().dropna()
@@ -161,7 +155,8 @@ if __name__ == "__main__":
 
     pool = multiprocessing.Pool()
     for i in range(len(provinces)):
-        pool.apply_async(draw, args=(model, df, provinces[i]), callback=process_result)
+        pool.apply_async(draw, args=(model, df, provinces[i], False), callback=process_result)
+        pool.apply_async(draw, args=(model, df, provinces[i], True), callback=process_result)
     pool.close()
     pool.join()
 
@@ -171,7 +166,7 @@ if __name__ == "__main__":
     with codecs.open("ARIMA_Province.md", "w", "utf-8") as f:
         f.write("# COVID-19 Forecasting\n\n")
         f.write(
-            "[![Province application](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml)\n"
+            "[![Province application](https://github.com/Neteraxe/covid_seird/actions/workflows/province-app.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/province-app.yml)\n"
         )
         f.write(
             "[![Data Source](https://img.shields.io/badge/Data%20Source-https://github.com/CSSEGISandData/COVID--19-brightgreen)](https://github.com/CSSEGISandData/COVID-19)\n"
