@@ -1,6 +1,6 @@
 # COVID-19 Forecasting
 
-[![Province application](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml)
+[![Province application](https://github.com/Neteraxe/covid_seird/actions/workflows/province-app.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/province-app.yml)
 [![Data Source](https://img.shields.io/badge/Data%20Source-https://github.com/CSSEGISandData/COVID--19-brightgreen)](https://github.com/CSSEGISandData/COVID-19)
 ## 安徽
 
