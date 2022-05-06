@@ -34,6 +34,10 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         sudo apt update
         sudo apt install fonts-wqy-zenhei
+        wget "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv" -O "time_series_covid19_deaths_global.csv"
+        wget "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_recovered_global.csv" -O "time_series_covid19_recovered_global.csv"
+        wget "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv" -O "time_series_covid19_confirmed_global.csv"
+        python dataTransform.py
         
     - name: Lint with flake8
       run: |
