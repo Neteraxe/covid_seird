@@ -168,7 +168,7 @@ if __name__ == "__main__":
 
 
     # 编制索引
-    with codecs.open("README.md", "w", "utf-8") as f:
+    with codecs.open("ARIMA_Province.md", "w", "utf-8") as f:
         f.write("# COVID-19 Forecasting\n\n")
         f.write(
             "[![Province application](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/build.yml)\n"
