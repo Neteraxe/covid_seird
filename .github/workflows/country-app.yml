@@ -49,6 +49,7 @@ jobs:
       run: |
         git config --local user.email "neteraxe@outlook.com"
         git config --local user.name "neteraxe"
+        git config pull.rebase false 
         git add .
         git commit -m "Auto Update"
         git pull https://github.com/Neteraxe/covid_seird.git master
