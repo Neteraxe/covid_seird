@@ -1,12 +1,9 @@
 import codecs
+import multiprocessing
 import os
 import re
-import multiprocessing
-
-import matplotlib
 
 import matplotlib.pyplot as plt
-
 import pandas as pd
 from pmdarima import arima
 from pmdarima.model_selection import train_test_split
@@ -58,6 +55,7 @@ def adjust_date(s):
 def adjust_name(s):
     return re.sub(r"[*,() ']", "_", s)
 
+
 def draw(model, df, province, isDaily):
     # 模型训练
     if isDaily:
@@ -73,7 +71,7 @@ def draw(model, df, province, isDaily):
     validating = pd.Series(pred_test, index=test.index)
     r2 = r2_score(test, pred_test)
     print(r2)
-    print(province_name[province]+" done!")
+    print(province_name[province] + " done!")
 
     # 开始预测
     pred, pred_ci = model.predict(n_periods=14, return_conf_int=True)
@@ -109,6 +107,7 @@ def draw(model, df, province, isDaily):
         )
         plt.close()
 
+
 if __name__ == "__main__":
     # 准备数据
     df = pd.read_csv(
@@ -117,12 +116,12 @@ if __name__ == "__main__":
     ).drop(columns=["Lat", "Long"])
     df = (
         df[(df["Country/Region"] == "China") | (df["Country/Region"] == "Taiwan*")]
-        .transpose()
-        .drop("Country/Region")
-        .rename(columns=str)
-        .rename(columns={"nan": "Taiwan"})
-        .drop(columns=["Unknown"])
-        .sort_index(axis=1)
+            .transpose()
+            .drop("Country/Region")
+            .rename(columns=str)
+            .rename(columns={"nan": "Taiwan"})
+            .drop(columns=["Unknown"])
+            .sort_index(axis=1)
     )
     df.index = pd.DatetimeIndex(df.index.map(adjust_date))
 
@@ -153,14 +152,13 @@ if __name__ == "__main__":
     def process_result(return_value):
         print(return_value)
 
+
     pool = multiprocessing.Pool()
     for i in range(len(provinces)):
         pool.apply_async(draw, args=(model, df, provinces[i], False), callback=process_result)
         pool.apply_async(draw, args=(model, df, provinces[i], True), callback=process_result)
     pool.close()
     pool.join()
-
-
 
     # 编制索引
     with codecs.open("ARIMA_Province.md", "w", "utf-8") as f:
