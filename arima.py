@@ -124,7 +124,7 @@ if __name__ == "__main__":
     with codecs.open("ARIMA_County.md", "w", "utf-8") as f:
         f.write("# COVID-19 Forecasting\n\n")
         f.write(
-            "[![Python application](https://github.com/Neteraxe/covid_seird/actions/workflows/country-app.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/country-app.yml)\n"
+            "[![Country application](https://github.com/Neteraxe/covid_seird/actions/workflows/country-app.yml/badge.svg)](https://github.com/Neteraxe/covid_seird/actions/workflows/country-app.yml)\n"
         )
         f.write(
             "[![Data Source](https://img.shields.io/badge/Data%20Source-https://github.com/CSSEGISandData/COVID--19-brightgreen)](https://github.com/CSSEGISandData/COVID-19)\n"
