@@ -1,6 +1,5 @@
 #!/usr/bin/python3
-
-# import matplotlib.pyplot as plt
+import datetime
 import json
 
 import numpy as np
@@ -44,28 +43,12 @@ def seird_model(N, str_dates, init_vals, params, t):
     return np.stack([DATE, S, E, I, R, D]).T
 
 
-def split_data(pred_start, infected, recovered, deaths):
-    train_min = 1
-    train_max = pred_start + 1
-    inf_train = []
-    rec_train = []
-    death_train = []
-    for i in range(train_min + 1, train_max):
-        j = i - 2
-        for k in range(j, i):
-            if infected[k] == 0:
-                infected[k] += 1
-        inf_train.append(infected[j:i])
-        rec_train.append(recovered[j:i])
-        death_train.append(deaths[j:i])
-    return inf_train, rec_train, death_train
-
-
 # noinspection PyGlobalUndefined
 def param_estimator(N, str_dates, inf_train, rec_train, death_train):
     # noinspection PyGlobalUndefined
     global e_0, e_diff, s_0
-    t2 = np.arange(0, 3, 1)
+    # array([0,1,2])
+    t2 = [0, 1, 2]
     # print("t2", t2)
     last5_vals = []
     last5_params = []
@@ -118,9 +101,10 @@ def param_estimator(N, str_dates, inf_train, rec_train, death_train):
         d = d_diff / i_0  # delta
 
         init_vals = str_dates[sample], s_0, e_0, i_0, r_0, d_0
-        params = a, b, g, d
         # print(params)
         str_dates2 = create_dates(str_dates[sample], len(t2))
+
+        params = a, b, g, d
         pred = seird_model(N, str_dates2, init_vals, params, t2)
         # print(pred)
         s_0 = float(pred[1][1])
@@ -134,28 +118,28 @@ def param_estimator(N, str_dates, inf_train, rec_train, death_train):
             last5_params.append([a, b, g, d])
     return last5_params, last5_vals
 
-
 class SEIRD:
-    def __init__(self, region, way, population, start_date, source, outfile):
+    def __init__(self, region, way, population, start_date, start_index, source, outfile):
         self.region = region
         self.way = way
         self.N = population
 
+        self.start_date = start_date
+        self.start_index = start_index
         self.source = source
         self.outfile = outfile
-        self.start_date = start_date
         self.REQUIRED_SAMPLES = 18
 
     def feed_data(self):
-
         global infected, recovered, deaths, confirmed
+
         if self.source == "jhu":
-            confirmed = pd.read_csv(self.way + "_time_series_covid19_confirmed_global.csv")[self.region].to_list()
+            confirmed = pd.read_csv(self.way + "_time_series_covid19_confirmed_global.csv")[self.region].to_list()[self.start_index:]
             # if self.region == "China":
             #    confirmed = np.subtract(confirmed, pd.read_csv("province_time_series_covid19_confirmed_global.csv")["Hong Kong"])
 
-            recovered = pd.read_csv(self.way + "_time_series_covid19_recovered_global.csv")[self.region].to_list()
-            deaths = pd.read_csv(self.way + "_time_series_covid19_deaths_global.csv")[self.region].to_list()
+            recovered = pd.read_csv(self.way + "_time_series_covid19_recovered_global.csv")[self.region].to_list()[self.start_index:]
+            deaths = pd.read_csv(self.way + "_time_series_covid19_deaths_global.csv")[self.region].to_list()[self.start_index:]
             # infected = df['Infected'].values.tolist()
             # confirmed = [ i + r + d for (i, r, d) in zip(infected, recovered, deaths)]
             infected = [c - r - d for (c, r, d)
@@ -164,9 +148,9 @@ class SEIRD:
 
             # print("Available", available,"days' data starting from", start_date)
         if self.source == "hand":
-            confirmed = pd.read_csv(self.way)['confirmed'].to_list()
-            recovered = pd.read_csv(self.way)['recovered'].to_list()
-            deaths = pd.read_csv(self.way)['deaths'].to_list()
+            confirmed = pd.read_csv(self.way)['confirmed'].to_list()[self.start_index:]
+            recovered = pd.read_csv(self.way)['recovered'].to_list()[self.start_index:]
+            deaths = pd.read_csv(self.way)['deaths'].to_list()[self.start_index:]
             infected = [c - r - d for (c, r, d) in zip(confirmed, recovered, deaths)]
 
         if len(confirmed) <= self.REQUIRED_SAMPLES:
@@ -200,8 +184,6 @@ class SEIRD:
         for z in range(1, len(last5_params)):  # 5params
             str_dates3 = create_dates(recent_vals[0], len(t21))
             results = seird_model(self.N, str_dates3, recent_vals, last5_params[z - 1], t21)
-            # t_z = np.arange(7 - z, 14 - z, 1)
-            # t_z = np.arange(0, 15 - z, 1)
             temp = []
             for day in range(1, len(t21)):
                 temp.append([results[day][0], int(float(results[day][3])), int(float(results[day][4])),
@@ -236,17 +218,27 @@ class SEIRD:
 
     def param_selection(self):
 
+        # data source
         start_date, available, infected, recovered, deaths = self.feed_data()
-
         # print(infected)
         # print(deaths)
 
-        pred_start = available
         # pred_start = available - 7
         # print(pred_start)
 
-        inf_train, rec_train, death_train = split_data(
-            pred_start, infected, recovered, deaths)
+        # split data
+        inf_train = []
+        rec_train = []
+        death_train = []
+        for i in range(2, available + 1):
+            j = i - 2
+            for k in range(j, i):
+                if infected[k] == 0:
+                    infected[k] += 1
+            inf_train.append(infected[j:i])
+            rec_train.append(recovered[j:i])
+            death_train.append(deaths[j:i])
+
         # print(rec_train)
         # print(death_train)
 
@@ -262,7 +254,7 @@ class SEIRD:
 
         preds = self.modified_predictions(last5_params, recent_vals)
 
-        v = pred_start - 7
+        v = available - 7
 
         mape_list = []
         for x in range(len(last5_params) - 1):
@@ -302,9 +294,7 @@ class SEIRD:
             avg_mape = np.around((mape_i + mape_d + mape_r) / 3, decimals=3)
             # print("total mape", avg_mape)
             mape_list.append(avg_mape)
-            # mape_list.append(mape_d)
-            # print("----------------------------------")
-        # print(mape_list)
+        print(mape_list)
 
         best_param = mape_list.index(min(mape_list))
         # print(best)
@@ -323,12 +313,9 @@ class SEIRD:
             death_predicted.append(
                 preds[best_param][len(preds[best_param]) - 21:][t][3])
 
-        con_predicted = [i + r + d for i, r,
-                                       d in zip(inf_predicted, rec_predicted, death_predicted)]
+        con_predicted = [i + r + d for i, r, d in zip(inf_predicted, rec_predicted, death_predicted)]
 
-        final_preds = [dates_p, con_predicted, death_predicted]
-
-        return final_preds
+        return [dates_p, con_predicted, death_predicted]
 
     def save_predictions(self, out):
         jsonOutput = dict()
@@ -388,8 +375,10 @@ class SEIRD:
 
 
 # JHU hong kong is very tricky
-model = SEIRD("China", "Country", 1411780000.0*(1.00034*(1+0.00034*1/3)), "2020-01-22", "jhu", "output")
-# model = SEIRD("Shanghai", "province", 24870895, "output")
+index = (datetime.datetime(2022,3,12) - datetime.datetime(2020,1,22)).days-1
+# model = SEIRD("China", "Country", 1411780000, "2022-03-11", index, "jhu", "output")
+model = SEIRD("Shanghai", "Province", 24870895, "2022-03-12", index, "jhu", "output")
+# model = SEIRD("Jilin", "province", 24073453, "2020-01-22", "jhu", "output")
 #
 output = model.final_run()
 print(output)
