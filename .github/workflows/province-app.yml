@@ -57,6 +57,7 @@ jobs:
         git add .
         git commit -m "Province Update"
         git pull https://github.com/Neteraxe/covid_seird.git master
+        git rebase --abort
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
