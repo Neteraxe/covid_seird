@@ -8,7 +8,6 @@ import multiprocessing
 
 import matplotlib
 
-matplotlib.use("QTAgg")
 import matplotlib.pyplot as plt
 
 import pandas as pd
