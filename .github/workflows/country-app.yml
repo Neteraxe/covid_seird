@@ -51,6 +51,7 @@ jobs:
         git config --local user.name "neteraxe"
         git add .
         git commit -m "Auto Update"
+        git pull https://github.com/Neteraxe/covid_seird.git master
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
