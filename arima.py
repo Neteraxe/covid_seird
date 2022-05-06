@@ -2,17 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import codecs
+import multiprocessing
 import os
 import re
-import multiprocessing
-
-import matplotlib
 
 import matplotlib.pyplot as plt
-
 import pandas as pd
 from pmdarima import arima
-from pmdarima.model_selection import train_test_split
+import pmdarima.model_selection
 from sklearn.metrics import r2_score
 
 
@@ -29,7 +26,7 @@ def draw(model, df, country):
     model.fit(data)
 
     # 模型验证
-    train, test = train_test_split(data, train_size=0.8)
+    train, test = pmdarima.model_selection.train_test_split(data, train_size=0.8)
     pred_test = model.predict_in_sample(start=train.shape[0], dynamic=False)
     validating = pd.Series(pred_test, index=test.index)
     r2 = r2_score(test, pred_test)
