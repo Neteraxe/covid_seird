@@ -53,7 +53,7 @@ jobs:
       run: |
         git config --local user.email "neteraxe@outlook.com"
         git config --local user.name "neteraxe"
-        git config pull.ff only
+        git config pull.rebase true
         git add .
         git commit -m "Province Update"
         git pull https://github.com/Neteraxe/covid_seird.git master
