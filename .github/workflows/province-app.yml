@@ -53,11 +53,10 @@ jobs:
       run: |
         git config --local user.email "neteraxe@outlook.com"
         git config --local user.name "neteraxe"
-        git config pull.rebase true
+        git config pull.ff only
         git add .
         git commit -m "Province Update"
         git pull https://github.com/Neteraxe/covid_seird.git master
-        git rebase --abort
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:
