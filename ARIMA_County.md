@@ -374,6 +374,10 @@
 
 ![img](figures/covid-Kiribati-daily.svg)
 
+## Korea, North
+
+![img](figures/covid-Korea__North-daily.svg)
+
 ## Korea, South
 
 ![img](figures/covid-Korea__South-daily.svg)
