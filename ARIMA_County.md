@@ -506,6 +506,10 @@
 
 ![img](figures/covid-Namibia-daily.svg)
 
+## Nauru
+
+![img](figures/covid-Nauru-daily.svg)
+
 ## Nepal
 
 ![img](figures/covid-Nepal-daily.svg)
@@ -737,6 +741,10 @@
 ## Turkey
 
 ![img](figures/covid-Turkey-daily.svg)
+
+## Tuvalu
+
+![img](figures/covid-Tuvalu-daily.svg)
 
 ## US
 
